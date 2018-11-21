@@ -43,27 +43,12 @@ fake_x_ = u_net(fake_y, name="y2x_generator", reuse=True)
 l2_x = tf.reduce_mean((x - fake_x_)**2)
 l2_y = tf.reduce_mean((y - fake_y_)**2)
 
-discriminator(y, name='discriminator_y')
-discriminator(x, name='discriminator_x')
-discriminator(fake_y, name='discriminator_y', reuse=True)
-discriminator(fake_x, name='discriminator_x', reuse=True)
+d_y_real = discriminator(y, name='discriminator_y')
+d_x_real = discriminator(x, name='discriminator_x')
+d_y_fake = discriminator(fake_y, name='discriminator_y', reuse=True)
+d_x_fake = discriminator(fake_x, name='discriminator_x', reuse=True)
 
-with tf.variable_scope("discriminator") as D:
-    #add gaussian noise
-    # noisy_x = self.x + tf.random_uniform(tf.shape(self.x), -0.005, 0.005)
-
-    D_real = self.__discriminator(self.x)
-    D.reuse_variables()
-    D_false = self.__discriminator(self.g_out)
-
-    #gradient penalty for wasserstein gp
-    epsilon = tf.random_uniform([tf.shape(self.x)[0],1,1], 0.0, 1.0)
-    x_hat = self.x + epsilon*(self.g_out-self.x)
-
-    D_false_w = self.__discriminator(x_hat)
-    gradients = tf.gradients(D_false_w, [x_hat])[0]
-    slopes = tf.sqrt(tf.reduce_sum(tf.square(gradients), axis=1))
-    self.gradient_penalty = 10*tf.reduce_mean(tf.square(slopes-1.0))
+tf.reduce_mean(d_y_fake, tf.ones_like(d_y_fake))
 
 loss = tf.reduce_mean(
     tf.nn.softmax_cross_entropy_with_logits_v2(labels=y_, logits=y))
