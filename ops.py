@@ -67,8 +67,8 @@ def concat_y(x, y):
     return xy
 
 
-def sub_pixel_conv(x, filter, kernel=2, stride=1, padding='SAME', uprate=2):
-    x = tf.layers.conv2d(inputs=x, filters=filter * uprate**2,
+def sub_pixel_conv(x, filters, kernel=2, stride=1, padding='SAME', uprate=2):
+    x = tf.layers.conv2d(inputs=x, filters=filters * uprate**2,
                          kernel_size=kernel, strides=stride,
                          padding=padding)
     x = tf.depth_to_space(input=x, block_size=uprate)

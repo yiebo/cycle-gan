@@ -6,6 +6,10 @@ __pycache__/
 # C extensions
 *.so
 
+# specific
+TFRECORD/*
+log/*
+
 # Distribution / packaging
 .Python
 build/

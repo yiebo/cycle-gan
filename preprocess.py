@@ -24,7 +24,7 @@ def bytes_feature(value):
 
 
 def tfrecord_example(image):
-    features = {'image': bytes_feature(tf.compat.as_bytes(image.tostring()))
+    features = {'image': bytes_feature(image.tostring())
                 }
 
     example = tf.train.Example(features=tf.train.Features(feature=features))
@@ -34,14 +34,15 @@ def tfrecord_example(image):
 
 if __name__ == '__main__':
     TFRECORD_SIZE = 1000
-    tfrecord_idx = 0
+    tfrecord_idx = 1
     idx = 0
     males = []
     females = []
 
-    with open('../DATASETS/celebA/list_attr_celeba.csv') as csvfile:
-        spamreader = list(csv.reader(csvfile))
-        for row in spamreader[1:]:
+    with open('../celebA/list_attr_celeba.txt') as csvfile:
+        reader = list(csv.reader(csvfile, delimiter=" "))
+
+        for row in reader[1:]:
             if row[21] == '1':
                 males.append(row[0])
             else:
@@ -58,11 +59,16 @@ if __name__ == '__main__':
             tfrecord_writer = tf.python_io.TFRecordWriter(
                 'TFRECORD/celebA_male_{:03d}.tfrecord'.format(tfrecord_idx))
 
-        image = cv2.imread(f'../DATASETS/celebA/img_align_celeba/{male}')
+        image = cv2.imread('../celebA/img_align_celeba/{}'.format(male))
+        image = cv2.cvtColor(image, cv2.COLOR_BGR2RGB)
+        image = cv2.resize(image, (176, 208))
         example = tfrecord_example(image)
         tfrecord_writer.write(example.SerializeToString())
         idx += 1
     tfrecord_writer.close()
+
+    tfrecord_idx = 1
+    idx = 0
 
     tfrecord_writer = tf.python_io.TFRecordWriter(
         'TFRECORD/celebA_female_{:03d}.tfrecord'.format(tfrecord_idx))
@@ -74,7 +80,9 @@ if __name__ == '__main__':
             tfrecord_writer.close()
             tfrecord_writer = tf.python_io.TFRecordWriter(
                 'TFRECORD/celebA_female_{:03d}.tfrecord'.format(tfrecord_idx))
-        image = cv2.imread(f'../DATASETS/celebA/img_align_celeba/{female}')
+        image = cv2.imread('../celebA/img_align_celeba/{}'.format(female))
+        image = cv2.cvtColor(image, cv2.COLOR_BGR2RGB)
+        image = cv2.resize(image, (176, 208))
         example = tfrecord_example(image)
         tfrecord_writer.write(example.SerializeToString())
         idx += 1

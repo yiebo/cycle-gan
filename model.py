@@ -13,7 +13,7 @@ def u_block(x, filter):
     with tf.variable_scope('layer_1'):
         x = tf.layers.conv2d(inputs=x, filters=filter,
                              kernel_size=3, strides=1, padding='SAME')
-        # x = tf.layers.batch_normalization(x, training=TRAINING)
+        x = tf.layers.batch_normalization(x, training=TRAINING)
         x = tf.nn.relu(x)
 
     with tf.variable_scope('layer_2'):
@@ -33,58 +33,53 @@ def up_conv(x, kernel=2):
         x = tf.nn.relu(x)
 
 
-def u_net(x, name, reuse=False):
-    with tf.variable_scope(name):
-        if reuse:
-            tf.get_variable_scope().reuse_variables()
-
+def u_net(x, name):
+    with tf.variable_scope(name, reuse=tf.AUTO_REUSE):
         depth = [64, 128, 256, 512]
         skip_connections = []
-        for idx, filter in enumerate(depth):
-            with tf.variable_scope(f'down_block{idx}'):
-                x = u_block(x, filter)
+        for idx, filters in enumerate(depth):
+            with tf.variable_scope('down_block{}'.format(idx)):
+                x = u_block(x, filters)
                 skip_connections.append(x)
-                x = tf.nn.max_pool(input=x, ksize=2, strides=2, padding='SAME')
+                x = tf.layers.max_pooling2d(inputs=x, pool_size=2, strides=2, padding='SAME')
 
-        with tf.variable_scope(f'conv_block'):
+        with tf.variable_scope('conv_block'):
             x = u_block(x, 1024)
-        depth = [64, 128, 256, 512]
+        depth = [512, 256, 128, 64]
+        skip_connections.reverse()
 
-        for idx, (filter, skip_connection) in enumerate(zip(depth, skip_connections)):
-            with tf.variable_scope(f'up_block{idx}'):
-                with tf.variable_scope(f'sub_pixel'):
-                    x = sub_pixel_conv(x, filter=depth, kernel=3, uprate=2)
+        for idx, (filters, skip_connection) in enumerate(zip(depth, skip_connections)):
+            with tf.variable_scope('up_block{}'.format(idx)):
+                with tf.variable_scope('sub_pixel'):
+                    x = sub_pixel_conv(x, filters=filters, kernel=3, uprate=2)
                     x = tf.layers.batch_normalization(x, training=TRAINING)
-                    x = tf.concat([x, skip_connection])
-            x = u_block(x, filter)
+                    x = tf.nn.relu(x)
+                    x = tf.concat([x, skip_connection], 3)
+                x = u_block(x, filters)
 
-        with tf.variable_scope(f'final_block'):
-            x = tf.layers.conv2d(inputs=x, filters=filter,
+        with tf.variable_scope('final_block'):
+            x = tf.layers.conv2d(inputs=x, filters=3,
                                  kernel_size=1, strides=1, padding='SAME')
-            x = tf.layers.batch_normalization(x, training=TRAINING)
-            x = tf.nn.sigmoid(x)
+            x = tf.nn.relu(x)
     return x
 
 
 def discriminator(x, name, reuse=False):
-    with tf.variable_scope(name):
-        if reuse:
-            tf.get_variable_scope().reuse_variables()
-
+    with tf.variable_scope(name, reuse=tf.AUTO_REUSE):
         depth = [64, 128, 256, 512, 1024]
-        for idx, filter in enumerate(depth):
-            with tf.variable_scope(f'conv_{idx}'):
-                x = tf.layers.conv2d(inputs=x, filters=filter,
-                                     kernel_size=1, strides=1, padding='SAME')
+        for idx, filters in enumerate(depth):
+            with tf.variable_scope('conv_{}'.format(idx)):
+                x = tf.layers.conv2d(inputs=x, filters=filters,
+                                     kernel_size=3, strides=1, padding='SAME')
                 x = tf.layers.batch_normalization(x, training=TRAINING)
-                x = tf.nn.max_pool(input=x, ksize=2, strides=2, padding='SAME')
+                x = tf.layers.max_pooling2d(inputs=x, pool_size=2, strides=2, padding='SAME')
 
-        with tf.variable_scope(f'fc_0'):
-            x = tf.layers.dense(input=x, units=256)
+        with tf.variable_scope('fc_0'):
+            x = tf.layers.dense(inputs=x, units=256)
             x = tf.layers.batch_normalization(x, training=TRAINING)
             x = tf.nn.relu(x)
 
-        with tf.variable_scope(f'fc_1'):
-            x = tf.layers.dense(input=x, units=1)
+        with tf.variable_scope('fc_1'):
+            x = tf.layers.dense(inputs=x, units=1)
     return x
 # 218x178
