@@ -1,32 +1,27 @@
 import tensorflow as tf
+from tensorflow.python.framework import ops
 
 
 def weight_variable(shape):
-    weight = tf.get_variable("weight", shape, initializer=tf.truncated_normal_initializer(stddev=0.01))
+    weight = tf.get_variable(name="weight", shape=shape,
+                             initializer=tf.glorot_uniform_initializer)
     return weight
 
 
 def bias_variable(shape):
-    bias = tf.get_variable("bias", shape, initializer=tf.truncated_normal_initializer(stddev=0.01))
+    bias = tf.get_variable(name="bias", shape=shape,
+                           initializer=tf.glorot_uniform_initializer)
     return bias
 
 
-def conv2d_dilated(x, k, co, rate=1, bn=True, padding='SAME'):
+def conv2d_dilated(x, k, co, rate=1, padding='SAME'):
     if isinstance(k, list):
         W = weight_variable([k[0], k[1], shape(x)[-1], co])
     else:
         W = weight_variable([k, k, shape(x)[-1], co])
     B = bias_variable([co])
     L = tf.nn.atrous_conv2d(x, W, rate=rate, padding=padding) + B
-    if bn:
-        L = batch_norm(L)
     return L
-
-
-def deconv2d(x, W, shape, s=1, padding='SAME'):
-    deconv = tf.nn.conv2d_transpose(value=x, filter=W, output_shape=shape,
-                                    strides=[1, s, s, 1], padding='SAME')
-    return tf.reshape(deconv, shape)
 
 
 class Reverse_Gradient_Builder(object):
@@ -51,8 +46,21 @@ class Reverse_Gradient_Builder(object):
 reverse_gradient = Reverse_Gradient_Builder()
 
 
-def batch_norm(x, epsilon=1e-5):
-    return tf.layers.batch_normalization(inputs=x, epsilon=epsilon)
+def float32_variable_storage_getter(getter, name, shape=None, dtype=None,
+                                    initializer=None, regularizer=None,
+                                    trainable=True,
+                                    *args, **kwargs):
+    """Custom variable getter that forces trainable variables to be stored in
+    float32 precision and then casts them to the training precision.
+    """
+    storage_dtype = tf.float32 if trainable else dtype
+    variable = getter(name, shape, dtype=storage_dtype,
+                      initializer=initializer, regularizer=regularizer,
+                      trainable=trainable,
+                      *args, **kwargs)
+    if trainable and dtype != tf.float32:
+        variable = tf.cast(variable, dtype)
+    return variable
 
 
 def shape(tensor):
@@ -67,9 +75,9 @@ def concat_y(x, y):
     return xy
 
 
-def sub_pixel_conv(x, filters, kernel=2, stride=1, padding='SAME', uprate=2):
+def sub_pixel_conv(x, filters, kernel_size=2, stride=1, padding='SAME', uprate=2):
     x = tf.layers.conv2d(inputs=x, filters=filters * uprate**2,
-                         kernel_size=kernel, strides=stride,
+                         kernel_size=kernel_size, strides=stride,
                          padding=padding)
     x = tf.depth_to_space(input=x, block_size=uprate)
     return x

@@ -1,36 +1,24 @@
 import tensorflow as tf
 from ops import *
-import glob
-import tqdm
-
-from read import _parse_function
 
 TRAINING = True
 
 
-def u_block(x, filter):
+def u_block(x, filters):
 
     with tf.variable_scope('layer_1'):
-        x = tf.layers.conv2d(inputs=x, filters=filter,
+        x = tf.layers.conv2d(inputs=x, filters=filters,
                              kernel_size=3, strides=1, padding='SAME')
         x = tf.layers.batch_normalization(x, training=TRAINING)
         x = tf.nn.relu(x)
 
     with tf.variable_scope('layer_2'):
-        x = tf.layers.conv2d(inputs=x, filters=filter,
+        x = tf.layers.conv2d(inputs=x, filters=filters,
                              kernel_size=3, strides=1, padding='SAME')
         x = tf.layers.batch_normalization(x, training=TRAINING)
         x = tf.nn.relu(x)
 
     return x
-
-
-def up_conv(x, kernel=2):
-    with tf.variable_scope('layer_2'):
-        x = tf.layers.conv2d(inputs=x, filters=filter,
-                             kernel_size=3, strides=1, padding='SAME')
-        x = tf.layers.batch_normalization(x, training=TRAINING)
-        x = tf.nn.relu(x)
 
 
 def u_net(x, name):
@@ -51,7 +39,7 @@ def u_net(x, name):
         for idx, (filters, skip_connection) in enumerate(zip(depth, skip_connections)):
             with tf.variable_scope('up_block{}'.format(idx)):
                 with tf.variable_scope('sub_pixel'):
-                    x = sub_pixel_conv(x, filters=filters, kernel=3, uprate=2)
+                    x = sub_pixel_conv(x, filters=filters, kernel_size=3, uprate=2)
                     x = tf.layers.batch_normalization(x, training=TRAINING)
                     x = tf.nn.relu(x)
                     x = tf.concat([x, skip_connection], 3)
