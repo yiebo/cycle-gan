@@ -126,7 +126,7 @@ saveable_f = tf.data.experimental.make_saveable_from_iterator(iterator_f)
 tf.add_to_collection(tf.GraphKeys.SAVEABLE_OBJECTS, saveable_m)
 tf.add_to_collection(tf.GraphKeys.SAVEABLE_OBJECTS, saveable_f)
 
-with tf.train.MonitoredTrainingSession(checkpoint_dir='log',
-                                       save_summaries_steps=500) as sess:
+with tf.train.MonitoredTrainingSession(checkpoint_dir='checkpoints', summary_dir='logs',
+                                       save_checkpoint_steps=1000, save_summaries_steps=250) as sess:
     for i in tqdm.trange(100000):
         sess.run(training_op)
