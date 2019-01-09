@@ -9,13 +9,13 @@ def u_block(x, filters):
     with tf.variable_scope('layer_1'):
         x = tf.layers.conv2d(inputs=x, filters=filters,
                              kernel_size=3, strides=1, padding='SAME')
-        x = tf.layers.batch_normalization(x, training=TRAINING, renorm=True)
+        x = tf.layers.batch_normalization(x, training=TRAINING)
         x = tf.nn.relu(x)
 
     with tf.variable_scope('layer_2'):
         x = tf.layers.conv2d(inputs=x, filters=filters,
                              kernel_size=3, strides=1, padding='SAME')
-        x = tf.layers.batch_normalization(x, training=TRAINING, renorm=True)
+        x = tf.layers.batch_normalization(x, training=TRAINING)
         x = tf.nn.relu(x)
 
     return x
@@ -40,7 +40,7 @@ def u_net(x, name):
             with tf.variable_scope('up_block{}'.format(idx)):
                 with tf.variable_scope('sub_pixel'):
                     x = sub_pixel_conv(x, filters=filters, kernel_size=3, uprate=2)
-                    x = tf.layers.batch_normalization(x, training=TRAINING, renorm=True)
+                    x = tf.layers.batch_normalization(x, training=TRAINING)
                     x = tf.nn.relu(x)
                     x = tf.concat([x, skip_connection], 3)
                 x = u_block(x, filters)
@@ -59,7 +59,7 @@ def discriminator(x, name, reuse=False):
             with tf.variable_scope('conv_{}'.format(idx)):
                 x = tf.layers.conv2d(inputs=x, filters=filters,
                                      kernel_size=3, strides=1, padding='SAME')
-                x = tf.layers.batch_normalization(x, training=TRAINING, renorm=True)
+                x = tf.layers.batch_normalization(x, training=TRAINING)
                 x = tf.layers.max_pooling2d(inputs=x, pool_size=2, strides=2, padding='SAME')
 
         # with tf.variable_scope('final_conv'):
@@ -70,7 +70,7 @@ def discriminator(x, name, reuse=False):
 
         with tf.variable_scope('fc_0'):
             x = tf.layers.dense(inputs=x, units=256)
-            x = tf.layers.batch_normalization(x, training=TRAINING, renorm=True)
+            x = tf.layers.batch_normalization(x, training=TRAINING)
             x = tf.nn.relu(x)
 
         with tf.variable_scope('fc_1'):

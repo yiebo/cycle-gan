@@ -100,11 +100,12 @@ loss_scale_manager_G = tf.contrib.mixed_precision.FixedLossScaleManager(5000)
 loss_scale_optimizer_G = tf.contrib.mixed_precision.LossScaleOptimizer(G_optimizer,
                                                                        loss_scale_manager_G)
 
+update_ops = tf.get_collection(tf.GraphKeys.UPDATE_OPS)
+with tf.control_dependencies(update_ops):
+    D_solver = loss_scale_optimizer_D.minimize(loss_d, var_list=D_var, global_step=global_step)
+    G_solver = loss_scale_optimizer_G.minimize(loss_g, var_list=G_var)
 
-D_solver = loss_scale_optimizer_D.minimize(loss_d, var_list=D_var, global_step=global_step)
-G_solver = loss_scale_optimizer_G.minimize(loss_g, var_list=G_var)
-
-training_op = tf.group(D_solver, G_solver)
+    training_op = tf.group(D_solver, G_solver)
 
 tf.summary.scalar('loss/d/total', loss_d)
 tf.summary.scalar('loss/g/total', loss_g)
