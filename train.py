@@ -12,10 +12,10 @@ from read import _parse_function
 TRAINING = True
 LAMBDA1 = 10
 LAMBDA2 = 10
-BATCH_SIZE = 2
+BATCH_SIZE = 4
 
 
-file_list_m = glob.glob("TFRECORD/celebA_male_*.tfrecord")
+file_list_m = glob.glob("../DATASETS/celebA/TFRECORD/male_*.tfrecord")
 dataset_m = tf.data.TFRecordDataset(file_list_m)
 dataset_m = dataset_m.map(_parse_function)
 
@@ -26,7 +26,7 @@ dataset_m = dataset_m.repeat()
 iterator_m = dataset_m.make_one_shot_iterator()
 
 
-file_list_f = glob.glob("TFRECORD/celebA_female_*.tfrecord")
+file_list_f = glob.glob("../DATASETS/celebA/TFRECORD/female_*.tfrecord")
 dataset_f = tf.data.TFRecordDataset(file_list_f)
 dataset_f = dataset_f.map(_parse_function)
 
@@ -44,9 +44,9 @@ y16 = tf.cast(y, tf.float16)
 with tf.variable_scope('generator', dtype=tf.float16,
                        custom_getter=float32_variable_storage_getter):
     fake_y = u_net(x16, name="x2y")
+    fake_x_ = u_net(fake_y, name="y2x")
     fake_x = u_net(y16, name="y2x")
     fake_y_ = u_net(fake_x, name="x2y")
-    fake_x_ = u_net(fake_y, name="y2x")
 
 loss_cycle_x = tf.reduce_mean(tf.abs(x - tf.cast(fake_x_, tf.float32)))
 loss_cycle_y = tf.reduce_mean(tf.abs(y - tf.cast(fake_y_, tf.float32)))
@@ -82,7 +82,7 @@ tf.train.create_global_step()
 global_step = tf.train.get_global_step()
 
 learning_rate_ = tf.train.exponential_decay(
-    0.00005, global_step, decay_steps=10000, decay_rate=0.95)
+    0.0005, global_step, decay_steps=10000, decay_rate=0.95)
 
 G_var = tf.get_collection(tf.GraphKeys.TRAINABLE_VARIABLES, scope='generator')
 D_var = tf.get_collection(tf.GraphKeys.TRAINABLE_VARIABLES, scope='discriminator')
@@ -101,7 +101,7 @@ loss_scale_optimizer_G = tf.contrib.mixed_precision.LossScaleOptimizer(G_solver,
 
 
 D_solver = loss_scale_optimizer_D.minimize(loss_d, var_list=D_var, global_step=global_step)
-G_solver = loss_scale_optimizer_G.minimize(loss_g, var_list=G_var, global_step=global_step)
+G_solver = loss_scale_optimizer_G.minimize(loss_g, var_list=G_var)
 
 training_op = tf.group(D_solver, G_solver)
 
@@ -113,20 +113,25 @@ tf.summary.scalar('loss/cycle_loss_x', loss_cycle_x)
 tf.summary.scalar('loss/cycle_loss_y', loss_cycle_y)
 tf.summary.scalar('learning_rate', learning_rate_)
 
-tf.summary.image('x/x', x, 1)
-tf.summary.image('x/xy', tf.maximum(fake_y, 1), 1)
-tf.summary.image('x/xyx', tf.maximum(fake_x_, 1), 1)
-tf.summary.image('y/y', y, 1)
-tf.summary.image('y/yx', tf.maximum(fake_x, 1), 1)
-tf.summary.image('y/yxy', tf.maximum(fake_y_, 1), 1)
+tf.summary.image('x/x', tf.minimum(x, 1), 1)
+tf.summary.image('x/xy', tf.minimum(fake_y, 1), 1)
+tf.summary.image('x/xyx', tf.minimum(fake_x_, 1), 1)
+tf.summary.image('y/y', tf.minimum(y, 1), 1)
+tf.summary.image('y/yx', tf.minimum(fake_x, 1), 1)
+tf.summary.image('y/yxy', tf.minimum(fake_y_, 1), 1)
 
 # save iterator states
-saveable_m = tf.data.experimental.make_saveable_from_iterator(iterator_m)
-saveable_f = tf.data.experimental.make_saveable_from_iterator(iterator_f)
-tf.add_to_collection(tf.GraphKeys.SAVEABLE_OBJECTS, saveable_m)
-tf.add_to_collection(tf.GraphKeys.SAVEABLE_OBJECTS, saveable_f)
+# saveable_m = tf.data.experimental.make_saveable_from_iterator(iterator_m)
+# saveable_f = tf.data.experimental.make_saveable_from_iterator(iterator_f)
+# tf.add_to_collection(tf.GraphKeys.SAVEABLE_OBJECTS, saveable_m)
+# tf.add_to_collection(tf.GraphKeys.SAVEABLE_OBJECTS, saveable_f)
 
 with tf.train.MonitoredTrainingSession(checkpoint_dir='checkpoints', summary_dir='logs',
-                                       save_checkpoint_steps=1000, save_summaries_steps=250) as sess:
-    for i in tqdm.trange(100000):
-        sess.run(training_op)
+                                       save_checkpoint_steps=1000,
+                                       save_summaries_steps=100) as sess:
+    with tqdm.tqdm(total=100000) as pbar:
+        while True:
+            _, step = sess.run([training_op, global_step])
+            pbar.update(step - pbar.n)
+            if step >= pbar.total:
+                break

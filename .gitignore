@@ -8,7 +8,8 @@ __pycache__/
 
 # specific
 TFRECORD/*
-log/*
+checkpoints/*
+logs/*
 
 # Distribution / packaging
 .Python

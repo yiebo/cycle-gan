@@ -10,6 +10,6 @@ def _parse_function(example_proto):
     image_raw = tf.decode_raw(parsed['image'], tf.uint8)
     image = tf.cast(image_raw, tf.float32)
     image = tf.reshape(image, [208, 176, 3]) / 255.0
-    # image = tf.image.random_flip_left_right(image)
+    image = tf.image.random_flip_left_right(image)
 
-    return image
+    return tf.cast(image, tf.float32)

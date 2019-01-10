@@ -38,8 +38,9 @@ if __name__ == '__main__':
     idx = 0
     males = []
     females = []
+    path = '../DATASETS/celebA'
 
-    with open('../celebA/list_attr_celeba.txt') as csvfile:
+    with open(f'{path}/list_attr_celeba.txt') as csvfile:
         reader = list(csv.reader(csvfile, delimiter=" "))
 
         for row in reader[1:]:
@@ -49,7 +50,7 @@ if __name__ == '__main__':
                 females.append(row[0])
 
     tfrecord_writer = tf.python_io.TFRecordWriter(
-        'TFRECORD/celebA_male_{:03d}.tfrecord'.format(tfrecord_idx))
+        f'{path}/TFRECORD/male_{tfrecord_idx:03d}.tfrecord')
 
     for male in tqdm(males):
         if idx >= TFRECORD_SIZE:
@@ -57,9 +58,9 @@ if __name__ == '__main__':
             tfrecord_idx += 1
             tfrecord_writer.close()
             tfrecord_writer = tf.python_io.TFRecordWriter(
-                'TFRECORD/celebA_male_{:03d}.tfrecord'.format(tfrecord_idx))
+                f'{path}/TFRECORD/male_{tfrecord_idx:03d}.tfrecord')
 
-        image = cv2.imread('../celebA/img_align_celeba/{}'.format(male))
+        image = cv2.imread(f'{path}/img_align_celeba/{male}')
         image = cv2.cvtColor(image, cv2.COLOR_BGR2RGB)
         image = cv2.resize(image, (176, 208))
         example = tfrecord_example(image)
@@ -71,7 +72,7 @@ if __name__ == '__main__':
     idx = 0
 
     tfrecord_writer = tf.python_io.TFRecordWriter(
-        'TFRECORD/celebA_female_{:03d}.tfrecord'.format(tfrecord_idx))
+        f'{path}/TFRECORD/female_{tfrecord_idx:03d}.tfrecord')
 
     for female in tqdm(females):
         if idx >= TFRECORD_SIZE:
@@ -79,8 +80,8 @@ if __name__ == '__main__':
             tfrecord_idx += 1
             tfrecord_writer.close()
             tfrecord_writer = tf.python_io.TFRecordWriter(
-                'TFRECORD/celebA_female_{:03d}.tfrecord'.format(tfrecord_idx))
-        image = cv2.imread('../celebA/img_align_celeba/{}'.format(female))
+                f'{path}/TFRECORD/female_{tfrecord_idx:03d}.tfrecord')
+        image = cv2.imread(f'{path}/img_align_celeba/{female}')
         image = cv2.cvtColor(image, cv2.COLOR_BGR2RGB)
         image = cv2.resize(image, (176, 208))
         example = tfrecord_example(image)
