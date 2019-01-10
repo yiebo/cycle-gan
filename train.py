@@ -3,6 +3,7 @@ from ops import *
 import glob
 import tqdm
 from model import u_net, discriminator
+import os
 
 from read import _parse_function
 
@@ -81,29 +82,29 @@ loss_d = (loss_d_y_fake + loss_d_x_fake + loss_d_y_real + loss_d_x_real) / 2
 tf.train.create_global_step()
 global_step = tf.train.get_global_step()
 
-learning_rate_ = tf.train.exponential_decay(
-    0.0005, global_step, decay_steps=10000, decay_rate=0.95)
+learning_rate_ = tf.train.exponential_decay(0.00005, global_step, decay_steps=5000, decay_rate=0.95)
 
 G_var = tf.get_collection(tf.GraphKeys.TRAINABLE_VARIABLES, scope='generator')
 D_var = tf.get_collection(tf.GraphKeys.TRAINABLE_VARIABLES, scope='discriminator')
 
 
-D_solver = tf.train.AdamOptimizer(learning_rate_, beta1=0.5, name='D_solver')
-G_solver = tf.train.AdamOptimizer(learning_rate_, beta1=0.5, name='G_solver')
+D_optimizer = tf.train.AdamOptimizer(learning_rate_, beta1=0.5, name='D_solver')
+G_optimizer = tf.train.AdamOptimizer(learning_rate_, beta1=0.5, name='G_solver')
 
 loss_scale_manager_D = tf.contrib.mixed_precision.FixedLossScaleManager(5000)
-loss_scale_optimizer_D = tf.contrib.mixed_precision.LossScaleOptimizer(D_solver,
+loss_scale_optimizer_D = tf.contrib.mixed_precision.LossScaleOptimizer(D_optimizer,
                                                                        loss_scale_manager_D)
 
 loss_scale_manager_G = tf.contrib.mixed_precision.FixedLossScaleManager(5000)
-loss_scale_optimizer_G = tf.contrib.mixed_precision.LossScaleOptimizer(G_solver,
+loss_scale_optimizer_G = tf.contrib.mixed_precision.LossScaleOptimizer(G_optimizer,
                                                                        loss_scale_manager_G)
 
+update_ops = tf.get_collection(tf.GraphKeys.UPDATE_OPS)
+with tf.control_dependencies(update_ops):
+    D_solver = loss_scale_optimizer_D.minimize(loss_d, var_list=D_var, global_step=global_step)
+    G_solver = loss_scale_optimizer_G.minimize(loss_g, var_list=G_var)
 
-D_solver = loss_scale_optimizer_D.minimize(loss_d, var_list=D_var, global_step=global_step)
-G_solver = loss_scale_optimizer_G.minimize(loss_g, var_list=G_var)
-
-training_op = tf.group(D_solver, G_solver)
+    training_op = tf.group(D_solver, G_solver)
 
 tf.summary.scalar('loss/d/total', loss_d)
 tf.summary.scalar('loss/g/total', loss_g)
@@ -113,10 +114,12 @@ tf.summary.scalar('loss/cycle_loss_x', loss_cycle_x)
 tf.summary.scalar('loss/cycle_loss_y', loss_cycle_y)
 tf.summary.scalar('learning_rate', learning_rate_)
 
-tf.summary.image('x/x', tf.minimum(x, 1), 1)
+
+tf.summary.image('x/x', x16, 1)
 tf.summary.image('x/xy', tf.minimum(fake_y, 1), 1)
 tf.summary.image('x/xyx', tf.minimum(fake_x_, 1), 1)
-tf.summary.image('y/y', tf.minimum(y, 1), 1)
+
+tf.summary.image('y/y', y16, 1)
 tf.summary.image('y/yx', tf.minimum(fake_x, 1), 1)
 tf.summary.image('y/yxy', tf.minimum(fake_y_, 1), 1)
 
@@ -125,6 +128,11 @@ tf.summary.image('y/yxy', tf.minimum(fake_y_, 1), 1)
 # saveable_f = tf.data.experimental.make_saveable_from_iterator(iterator_f)
 # tf.add_to_collection(tf.GraphKeys.SAVEABLE_OBJECTS, saveable_m)
 # tf.add_to_collection(tf.GraphKeys.SAVEABLE_OBJECTS, saveable_f)
+
+if not os.path.exists('logs'):
+    os.makedirs('logs')
+if not os.path.exists('checkpoints'):
+    os.makedirs('checkpoints')
 
 with tf.train.MonitoredTrainingSession(checkpoint_dir='checkpoints', summary_dir='logs',
                                        save_checkpoint_steps=1000,

@@ -63,6 +63,12 @@ def discriminator(x, name, reuse=False):
                 x = tf.layers.max_pooling2d(inputs=x, pool_size=2, strides=2, padding='SAME')
                 x = tf.nn.relu(x)
 
+        # with tf.variable_scope('final_conv'):
+        #     x = tf.layers.conv2d(inputs=x, filters=1,
+        #                          kernel_size=1, strides=1, padding='SAME')
+
+        # x = tf.layers.flatten(x)
+
         with tf.variable_scope('fc_0'):
             x = tf.layers.flatten(x)
             x = tf.layers.dense(inputs=x, units=256)
