@@ -14,5 +14,6 @@ def _parse_function(example_proto):
     image = tf.image.random_flip_left_right(image)
     image = tf.image.random_brightness(image, max_delta=32. / 255.)
     image = tf.image.random_saturation(image, lower=0.5, upper=1.5)
+    # image = tf.contrib.image.translate(image, tf.random_uniform(shape=[2], minval=-30, maxval=30))
 
-    return tf.cast(image, tf.float32)
+    return image

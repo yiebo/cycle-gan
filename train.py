@@ -37,7 +37,7 @@ dataset_f = dataset_f.prefetch(1)
 dataset_f = dataset_f.repeat()
 iterator_f = dataset_f.make_one_shot_iterator()
 
-x, y = iterator_m.get_next(), iterator_f.get_next()
+x, y = iterator_f.get_next(), iterator_m.get_next()
 x16 = tf.cast(x, tf.float16)
 y16 = tf.cast(y, tf.float16)
 
@@ -82,19 +82,19 @@ loss_d = (loss_d_y_fake + loss_d_x_fake + loss_d_y_real + loss_d_x_real) / 2
 tf.train.create_global_step()
 global_step = tf.train.get_global_step()
 
-learning_rate_ = tf.train.exponential_decay(0.00005, global_step,
-                                            decay_steps=2000, decay_rate=0.95)
+learning_rate_ = tf.train.exponential_decay(0.0005, global_step,
+                                            decay_steps=2000, decay_rate=0.9)
 
 G_var = tf.get_collection(tf.GraphKeys.TRAINABLE_VARIABLES, scope='generator')
 D_var = tf.get_collection(tf.GraphKeys.TRAINABLE_VARIABLES, scope='discriminator')
 
 D_optimizer = tf.train.AdamOptimizer(learning_rate_, beta1=0.5, name='D_solver')
-loss_scale_manager_D = tf.contrib.mixed_precision.FixedLossScaleManager(5000)
+loss_scale_manager_D = tf.contrib.mixed_precision.ExponentialUpdateLossScaleManager(5000, 2000)
 loss_scale_optimizer_D = tf.contrib.mixed_precision.LossScaleOptimizer(D_optimizer,
                                                                        loss_scale_manager_D)
 
 G_optimizer = tf.train.AdamOptimizer(learning_rate_, beta1=0.5, name='G_solver')
-loss_scale_manager_G = tf.contrib.mixed_precision.FixedLossScaleManager(5000)
+loss_scale_manager_G = tf.contrib.mixed_precision.ExponentialUpdateLossScaleManager(5000, 2000)
 loss_scale_optimizer_G = tf.contrib.mixed_precision.LossScaleOptimizer(G_optimizer,
                                                                        loss_scale_manager_G)
 
@@ -106,22 +106,26 @@ with tf.control_dependencies(update_ops):
 
     training_op = tf.group(D_solver, G_solver)
 
+# losses
 tf.summary.scalar('loss/d/total', loss_d)
 tf.summary.scalar('loss/g/total', loss_g)
 tf.summary.scalar('loss/g/x', loss_g_x)
 tf.summary.scalar('loss/g/y', loss_g_y)
 tf.summary.scalar('loss/cycle_loss_x', loss_cycle_x)
 tf.summary.scalar('loss/cycle_loss_y', loss_cycle_y)
-tf.summary.scalar('learning_rate', learning_rate_)
 
-
+# images
 tf.summary.image('x/x', x16, 1)
-tf.summary.image('x/xy', tf.minimum(fake_y, 1), 1)
-tf.summary.image('x/xyx', tf.minimum(fake_x_, 1), 1)
-
+tf.summary.image('x/x2y', tf.minimum(fake_y, 1), 1)
+tf.summary.image('x/x2y2x', tf.minimum(fake_x_, 1), 1)
 tf.summary.image('y/y', y16, 1)
-tf.summary.image('y/yx', tf.minimum(fake_x, 1), 1)
-tf.summary.image('y/yxy', tf.minimum(fake_y_, 1), 1)
+tf.summary.image('y/y2x', tf.minimum(fake_x, 1), 1)
+tf.summary.image('y/y2x2y', tf.minimum(fake_y_, 1), 1)
+
+# params
+tf.summary.scalar('loss_scale/g', loss_scale_manager_G.get_loss_scale())
+tf.summary.scalar('loss_scale/d', loss_scale_manager_D.get_loss_scale())
+tf.summary.scalar('learning_rate', learning_rate_)
 
 # save iterator states
 # saveable_m = tf.data.experimental.make_saveable_from_iterator(iterator_m)
@@ -134,10 +138,13 @@ if not os.path.exists('logs'):
 if not os.path.exists('checkpoints'):
     os.makedirs('checkpoints')
 
+config = tf.ConfigProto()
+config.gpu_options.allow_growth = True
+
 with tf.train.MonitoredTrainingSession(checkpoint_dir='checkpoints', summary_dir='logs',
-                                       save_checkpoint_steps=5000,
-                                       save_summaries_steps=200) as sess:
-    with tqdm.tqdm(total=100000) as pbar:
+                                       save_checkpoint_steps=2000,
+                                       save_summaries_steps=200, config=config) as sess:
+    with tqdm.tqdm(total=100000, dynamic_ncols=True) as pbar:
         while True:
             _, step = sess.run([training_op, global_step])
             pbar.update(step - pbar.n)

@@ -81,3 +81,18 @@ def sub_pixel_conv(x, filters, kernel_size=2, stride=1, padding='SAME', uprate=2
                          padding=padding)
     x = tf.depth_to_space(input=x, block_size=uprate)
     return x
+
+
+def gradient_penalty(real, fake, discriminator, name_d):
+    with tf.name_scope("gradient_penalty_name_d"):
+        epsilon = tf.random_uniform(shape=[tf.shape(real)[0], 1, 1, 1],
+                                    minval=0.0, maxval=1.0)
+        x_hat = real + epsilon * (fake - real)
+
+        D_false_w = discriminator(x_hat, name=name_d)
+
+        gradients = tf.gradients(D_false_w, x_hat)[0]
+        slopes = tf.norm(tf.layers.flatten(gradients), axis=1)
+        gp = 10 * tf.reduce_mean(tf.square(slopes - 1.0))
+
+    return gp

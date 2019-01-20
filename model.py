@@ -1,7 +1,7 @@
 import tensorflow as tf
 from ops import *
 
-TRAINING = True
+TRAINING = False
 
 
 def u_block(x, filters):
