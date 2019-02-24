@@ -2,15 +2,13 @@ import tensorflow as tf
 from tensorflow.python.framework import ops
 
 
-def weight_variable(shape):
-    weight = tf.get_variable(name="weight", shape=shape,
-                             initializer=tf.glorot_uniform_initializer)
+def weight_variable(name="weight", shape=None, init=tf.glorot_uniform_initializer):
+    weight = tf.get_variable(name=name, shape=shape, initializer=init)
     return weight
 
 
-def bias_variable(shape):
-    bias = tf.get_variable(name="bias", shape=shape,
-                           initializer=tf.glorot_uniform_initializer)
+def bias_variable(name="bias", shape=None, init=tf.glorot_uniform_initializer):
+    bias = tf.get_variable(name=name, shape=shape, initializer=init)
     return bias
 
 
