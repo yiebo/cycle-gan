@@ -32,14 +32,14 @@ images = []
 
 for file in files:
     image = cv2.imread(f'input/{file}')
-    image = cv2.resize(image, (288, 288))
+    image = cv2.resize(image, (208, 208))
     image = image / 255.0
 
     image = image[..., ::-1]
     images.append(image)
 
 with tf.Session(config=config) as sess:
-    saver = tf.train.import_meta_graph('checkpoints/model.ckpt-90000.meta')
+    saver = tf.train.import_meta_graph('checkpoints/model.ckpt-130000.meta')
     saver.restore(sess, tf.train.latest_checkpoint('checkpoints'))
 
     # Our operations on the frame come here

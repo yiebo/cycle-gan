@@ -144,7 +144,7 @@ config.gpu_options.allow_growth = True
 with tf.train.MonitoredTrainingSession(checkpoint_dir='checkpoints', summary_dir='logs',
                                        save_checkpoint_steps=2000,
                                        save_summaries_steps=200, config=config) as sess:
-    with tqdm.tqdm(total=100000, dynamic_ncols=True) as pbar:
+    with tqdm.tqdm(total=200000, dynamic_ncols=True) as pbar:
         while True:
             _, step = sess.run([training_op, global_step])
             pbar.update(step - pbar.n)
