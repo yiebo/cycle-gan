@@ -65,14 +65,6 @@ def shape(tensor):
     return tensor.get_shape().as_list()
 
 
-def concat_y(x, y):
-    with tf.name_scope("concat_y"):
-        yb = tf.tile(tf.reshape(y, [-1, 1, 1, shape(y)[-1]]),
-                     [1, tf.shape(x)[1], tf.shape(x)[2], 1])
-        xy = tf.concat([x, yb], 3)
-    return xy
-
-
 def sub_pixel_conv(x, filters, kernel_size=2, stride=1, padding='SAME', uprate=2):
     x = tf.layers.conv2d(inputs=x, filters=filters * uprate**2,
                          kernel_size=kernel_size, strides=stride,
@@ -81,16 +73,16 @@ def sub_pixel_conv(x, filters, kernel_size=2, stride=1, padding='SAME', uprate=2
     return x
 
 
-def gradient_penalty(real, fake, discriminator, name_d):
+def gradient_penalty(real, fake, discriminator, dtype, name_d):
     with tf.name_scope("gradient_penalty_name_d"):
         epsilon = tf.random_uniform(shape=[tf.shape(real)[0], 1, 1, 1],
-                                    minval=0.0, maxval=1.0)
+                                    minval=0.0, maxval=1.0, dtype=dtype)
         x_hat = real + epsilon * (fake - real)
 
         D_false_w = discriminator(x_hat, name=name_d)
 
         gradients = tf.gradients(D_false_w, x_hat)[0]
-        slopes = tf.norm(tf.layers.flatten(gradients), axis=1)
+        slopes = tf.sqrt(tf.reduce_sum(tf.square(gradients), axis=1))
         gp = 10 * tf.reduce_mean(tf.square(slopes - 1.0))
 
     return gp
