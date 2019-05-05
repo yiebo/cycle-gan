@@ -5,7 +5,7 @@ import tqdm
 from model import u_net, discriminator
 import os
 
-from read import _parse_function
+from read import iterator
 
 # tf.enable_eager_execution()
 
@@ -13,29 +13,13 @@ from read import _parse_function
 TRAINING = True
 LAMBDA1 = 10
 LAMBDA2 = 10
-BATCH_SIZE = 5
+BATCH_SIZE = 4
 
 
 file_list_m = glob.glob("../DATASETS/celebA/TFRECORD/male_*.tfrecord")
-dataset_m = tf.data.TFRecordDataset(file_list_m)
-dataset_m = dataset_m.map(_parse_function)
-
-dataset_m.apply(tf.data.experimental.shuffle_and_repeat(buffer_size=500))
-dataset_m = dataset_m.batch(BATCH_SIZE)
-dataset_m = dataset_m.prefetch(1)
-dataset_m = dataset_m.repeat()
-iterator_m = dataset_m.make_one_shot_iterator()
-
-
 file_list_f = glob.glob("../DATASETS/celebA/TFRECORD/female_*.tfrecord")
-dataset_f = tf.data.TFRecordDataset(file_list_f)
-dataset_f = dataset_f.map(_parse_function)
-
-dataset_f.apply(tf.data.experimental.shuffle_and_repeat(buffer_size=500))
-dataset_f = dataset_f.batch(BATCH_SIZE)
-dataset_f = dataset_f.prefetch(1)
-dataset_f = dataset_f.repeat()
-iterator_f = dataset_f.make_one_shot_iterator()
+iterator_m = iterator(file_list_m, BATCH_SIZE)
+iterator_f = iterator(file_list_f, BATCH_SIZE)
 
 x, y = iterator_f.get_next(), iterator_m.get_next()
 x16 = tf.cast(x, tf.float16)
@@ -61,23 +45,42 @@ with tf.variable_scope('discriminator', dtype=tf.float16,
     d_y_fake = discriminator(fake_y, name='y')
     d_x_fake = discriminator(fake_x, name='x')
 
+
 d_y_real = tf.cast(d_y_real, tf.float32)
 d_x_real = tf.cast(d_x_real, tf.float32)
 d_y_fake = tf.cast(d_y_fake, tf.float32)
 d_x_fake = tf.cast(d_x_fake, tf.float32)
 
-loss_g_y = tf.reduce_mean(tf.squared_difference(d_y_fake, 0.9))
-loss_g_x = tf.reduce_mean(tf.squared_difference(d_x_fake, 0.9))
+# --------------LSGAN
+# loss_g_y = tf.reduce_mean(tf.squared_difference(d_y_fake, 0.9))
+# loss_g_x = tf.reduce_mean(tf.squared_difference(d_x_fake, 0.9))
 
+# loss_g = loss_g_x + loss_g_y + loss_cycle
+
+# loss_d_y_fake = tf.reduce_mean(tf.squared_difference(d_y_fake, 0.1))
+# loss_d_x_fake = tf.reduce_mean(tf.squared_difference(d_x_fake, 0.1))
+# loss_d_y_real = tf.reduce_mean(tf.squared_difference(d_y_real, 0.9))
+# loss_d_x_real = tf.reduce_mean(tf.squared_difference(d_x_real, 0.9))
+
+# loss_d = (loss_d_y_fake + loss_d_x_fake + loss_d_y_real + loss_d_x_real) / 2
+
+# -------------GAN SIMPLE GP R1
+d_y_real = tf.reduce_mean(d_y_real)
+d_x_real = tf.reduce_mean(d_x_real)
+d_y_fake = tf.reduce_mean(d_y_fake)
+d_x_fake = tf.reduce_mean(d_x_fake)
+
+loss_g_y = tf.nn.softplus(-d_y_fake)
+loss_g_x = tf.nn.softplus(-d_x_fake)
 loss_g = loss_g_x + loss_g_y + loss_cycle
 
-loss_d_y_fake = tf.reduce_mean(tf.squared_difference(d_y_fake, 0.1))
-loss_d_x_fake = tf.reduce_mean(tf.squared_difference(d_x_fake, 0.1))
-loss_d_y_real = tf.reduce_mean(tf.squared_difference(d_y_real, 0.9))
-loss_d_x_real = tf.reduce_mean(tf.squared_difference(d_x_real, 0.9))
+gp_x = gradient_penalty_simple(x, d_x_real)
+gp_y = gradient_penalty_simple(y, d_y_real)
 
+loss_d_x = tf.nn.softplus(d_x_fake) + tf.nn.softplus(-d_x_real) + gp_x
+loss_d_y = tf.nn.softplus(d_y_fake) + tf.nn.softplus(-d_y_real) + gp_y
 
-loss_d = (loss_d_y_fake + loss_d_x_fake + loss_d_y_real + loss_d_x_real) / 2
+loss_d = loss_d_x + loss_d_y
 
 tf.train.create_global_step()
 global_step = tf.train.get_global_step()
@@ -113,6 +116,10 @@ tf.summary.scalar('loss/g/x', loss_g_x)
 tf.summary.scalar('loss/g/y', loss_g_y)
 tf.summary.scalar('loss/cycle_loss_x', loss_cycle_x)
 tf.summary.scalar('loss/cycle_loss_y', loss_cycle_y)
+tf.summary.scalar('loss/d/x', loss_d_x)
+tf.summary.scalar('loss/d/y', loss_d_y)
+tf.summary.scalar('loss/gp/x', gp_x)
+tf.summary.scalar('loss/gp/y', gp_y)
 
 # images
 tf.summary.image('x/x', x16, 1)
@@ -147,6 +154,7 @@ with tf.train.MonitoredTrainingSession(checkpoint_dir='checkpoints', summary_dir
     with tqdm.tqdm(total=200000, dynamic_ncols=True) as pbar:
         while True:
             _, step = sess.run([training_op, global_step])
-            pbar.update(step - pbar.n)
-            if step >= pbar.total:
-                break
+            if step - pbar.n > 0:
+                pbar.update(step - pbar.n)
+                if step >= pbar.total:
+                    break

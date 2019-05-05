@@ -7,10 +7,10 @@ __pycache__/
 *.so
 
 # specific
-checkpoints/*
-logs/*
-input/*
-output/*
+checkpoints*/*
+logs*/*
+input*/*
+output*/*
 
 # Distribution / packaging
 .Python

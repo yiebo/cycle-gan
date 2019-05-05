@@ -4,7 +4,6 @@ import cv2
 from ops import *
 import os
 
-
 x = tf.placeholder(tf.float16, shape=[None, None, None, 3])
 
 with tf.variable_scope('generator', dtype=tf.float16,
@@ -39,7 +38,7 @@ for file in files:
     images.append(image)
 
 with tf.Session(config=config) as sess:
-    saver = tf.train.import_meta_graph('checkpoints/model.ckpt-130000.meta')
+    saver = tf.train.import_meta_graph('checkpoints/model.ckpt-34000.meta')
     saver.restore(sess, tf.train.latest_checkpoint('checkpoints'))
 
     # Our operations on the frame come here
