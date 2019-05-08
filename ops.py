@@ -73,16 +73,31 @@ def sub_pixel_conv(x, filters, kernel_size=2, stride=1, padding='SAME', uprate=2
     return x
 
 
-def gradient_penalty(real, fake, discriminator, dtype, name_d):
+def gradient_penalty_wgan(real, fake, discriminator, name_d, gamma=10.0):
+    dtype = fake.dtype
     with tf.name_scope("gradient_penalty_name_d"):
         epsilon = tf.random_uniform(shape=[tf.shape(real)[0], 1, 1, 1],
-                                    minval=0.0, maxval=1.0, dtype=dtype)
+                                    minval=0.0, maxval=1.0)
+        real = tf.cast(real, tf.float32)
+        fake = tf.cast(fake, tf.float32)
         x_hat = real + epsilon * (fake - real)
+        x_hat_type = tf.cast(x_hat, dtype)
+        real = tf.reduce_sum(real)
+        D_false_w = discriminator(x_hat_type, name=name_d)
+        D_false_w = tf.cast(D_false_w, tf.float32)
 
-        D_false_w = discriminator(x_hat, name=name_d)
-
-        gradients = tf.gradients(D_false_w, x_hat)[0]
+        gradients = tf.gradients(real, x_hat)[0]
         slopes = tf.sqrt(tf.reduce_sum(tf.square(gradients), axis=1))
-        gp = 10 * tf.reduce_mean(tf.square(slopes - 1.0))
+        gp = gamma * tf.reduce_mean(tf.square(slopes - 1.0))
+
+    return gp
+
+
+def gradient_penalty_simple(d_output, x, gamma=10.0):
+    with tf.name_scope("gradient_penalty_R1"):
+        d_output = tf.reduce_sum(d_output)
+        gradients = tf.gradients(d_output, x)[0]
+        gp = gamma * tf.reduce_sum(tf.square(gradients), axis=[1, 2, 3])
+        gp = tf.reduce_mean(gp)
 
     return gp

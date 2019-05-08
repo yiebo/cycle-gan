@@ -11,6 +11,7 @@ checkpoints*/*
 logs*/*
 input*/*
 output*/*
+TFRECORD/*
 
 # Distribution / packaging
 .Python
